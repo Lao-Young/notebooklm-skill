@@ -9,6 +9,15 @@ import sys
 import subprocess
 from pathlib import Path
 
+# Fix Windows GBK encoding issues with emoji/unicode in print statements
+if os.name == 'nt':
+    os.environ.setdefault('PYTHONIOENCODING', 'utf-8')
+    try:
+        sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        sys.stderr.reconfigure(encoding='utf-8', errors='replace')
+    except (AttributeError, OSError):
+        pass
+
 
 def get_venv_python():
     """Get the virtual environment Python executable"""
@@ -35,7 +44,9 @@ def ensure_venv():
         print("   This may take a minute...")
 
         # Run setup with system Python
-        result = subprocess.run([sys.executable, str(setup_script)])
+        env = os.environ.copy()
+        env['PYTHONIOENCODING'] = 'utf-8'
+        result = subprocess.run([sys.executable, str(setup_script)], env=env)
         if result.returncode != 0:
             print("❌ Failed to set up environment")
             sys.exit(1)
@@ -86,9 +97,13 @@ def main():
     # Build command
     cmd = [str(venv_python), str(script_path)] + script_args
 
+    # Pass UTF-8 encoding to subprocess (fixes Windows GBK issues with emoji)
+    env = os.environ.copy()
+    env['PYTHONIOENCODING'] = 'utf-8'
+
     # Run the script
     try:
-        result = subprocess.run(cmd)
+        result = subprocess.run(cmd, env=env)
         sys.exit(result.returncode)
     except KeyboardInterrupt:
         print("\n⚠️ Interrupted by user")
